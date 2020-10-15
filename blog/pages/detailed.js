@@ -4,8 +4,16 @@ import {Row, Col, Breadcrumb, Affix } from 'antd'
 import { CalendarOutlined, YoutubeOutlined, FireOutlined } from '@ant-design/icons';
 import ReactMarkdown from 'react-markdown'
 import MarkNav from 'markdown-navbar'
+import axios from 'axios'
 import 'markdown-navbar/dist/navbar.css'
+// highlight component
+import marked from 'marked'
+import hljs from "highlight.js";
+import 'highlight.js/styles/monokai-sublime.css';
 
+import Tocify from '../components/tocify.tsx'
+
+import servicePath  from '../config/apiUrl'
 import Header from '../components/Header'
 import Author from '../components/Author'
 import Ad from '../components/Ad'
@@ -14,41 +22,34 @@ import '../static/style/pages/detailed.css'
 
 
 
-const Detailed = () => {
-  let markdown='# P01:intro\n' +
-  '[ **M** ] arkdown + E [ **ditor** ] = **Mditor**  \n' +
-  '> Mditor is... \n\n' +
-   '**this**\n\n' +
-  '*this*`\n\n' +
-  '***this***\n\n' +
-  '~~this~~ \n\n'+
-  '\`console.log(111)\` \n\n'+
-  '# p02:来个Hello World this.0\n' +
-  '> aaaaaaaaa\n' +
-  '>> bbbbbbbbb\n' +
-  '>>> cccccccccc\n'+
-  '***\n\n\n' +
-  '# p03:Vue3.\n' +
-  '> aaaaaaaaa\n' +
-  '>> bbbbbbbbb\n' +
-  '>>> cccccccccc\n\n'+
-  '# p04:Vue3.\n' +
-  '> aaaaaaaaa\n' +
-  '>> bbbbbbbbb\n' +
-  '>>> cccccccccc\n\n'+
-  '#5 p05:Vue3.\n' +
-  '> aaaaaaaaa\n' +
-  '>> bbbbbbbbb\n' +
-  '>>> cccccccccc\n\n'+
-  '# p06:Vue3.a\n' +
-  '> aaaaaaaaa\n' +
-  '>> bbbbbbbbb\n' +
-  '>>> cccccccccc\n\n'+
-  '# p07:Vue3.a\n' +
-  '> aaaaaaaaa\n' +
-  '>> bbbbbbbbb\n' +
-  '>>> cccccccccc\n\n'+
-  '``` var a=11; ```'
+
+
+const Detailed = (props) => {
+  const tocify = new Tocify()
+  const renderer = new marked.Renderer();
+
+  renderer.heading = function(text, level, raw) {
+    const anchor = tocify.add(text, level);
+    return `<a id="${anchor}" href="#${anchor}" class="anchor-fix"><h${level}>${text}</h${level}></a>\n`;
+  };
+  
+
+  marked.setOptions({
+      renderer: renderer, 
+      gfm: true,
+      pedantic: false,
+      sanitize: false,
+      tables: true,
+      breaks: false,
+      smartLists: true,
+      smartypants: false,
+      highlight: function (code) {
+        return hljs.highlightAuto(code).value;
+      }
+  });
+
+  let html = marked(props.article_content) 
+
   return (
     <>
       <Head>
@@ -61,27 +62,24 @@ const Detailed = () => {
               <div className="bread-div">
                 <Breadcrumb>
                   <Breadcrumb.Item><a href="/">Home</a></Breadcrumb.Item>
-                  <Breadcrumb.Item>video</Breadcrumb.Item>
-                  <Breadcrumb.Item>xxxx</Breadcrumb.Item>
+                  <Breadcrumb.Item>{props.typeName}</Breadcrumb.Item>
+                  <Breadcrumb.Item>{props.title}</Breadcrumb.Item>
                 </Breadcrumb>
               </div>
 
              <div>
                 <div className="detailed-title">
-                This is a title
+                {props.title}
                 </div>
 
                 <div className="list-icon center">
-                  <span><CalendarOutlined /> 2019-06-28</span>
-                  <span><YoutubeOutlined /> Video</span>
+                  <span><CalendarOutlined /> {props.publishTime}</span>
+                  <span><YoutubeOutlined />{props.typeName}</span>
                   <span><FireOutlined /> 5498 views</span>
                 </div>
 
-                <div className="detailed-content" >
-                <ReactMarkdown 
-                  source={markdown} 
-                  escapeHtml={false}  
-                />
+                <div className="detailed-content" dangerouslySetInnerHTML = {{__html:html}} >
+                
                 </div>
 
              </div>
@@ -95,12 +93,7 @@ const Detailed = () => {
             <Affix offsetTop={5}>
               <div className="detailed-nav comm-box">
                 <div className="nav-title">Artical Nav</div>
-                  <MarkNav
-                    className="article-menu"
-                    source={markdown}
-
-                    ordered={false}
-                  />
+                {tocify && tocify.render()}
               </div>
           </Affix>
         </Col>
@@ -108,5 +101,22 @@ const Detailed = () => {
       <Footer/>
    </>
 )}
+
+Detailed.getInitialProps = async(context)=>{
+
+  console.log(context.query.id)
+  let id =context.query.id
+  const promise = new Promise((resolve)=>{
+
+    axios(servicePath.getArticleById+id).then(
+      (res)=>{
+        resolve(res.data.data[0])
+        console.log(res.data.data[0])
+      }
+    )
+  })
+
+  return await promise
+}
 
 export default Detailed
